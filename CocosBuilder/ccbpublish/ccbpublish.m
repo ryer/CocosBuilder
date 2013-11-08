@@ -25,8 +25,19 @@
 #import <Foundation/Foundation.h>
 #import "PlugInManager.h"
 #import "PlugInExport.h"
+#import "ProjectSettings.h"
 
-static void	parseArgs(NSArray *args, NSString **outPlugin, NSArray **publishPaths, NSURL **outputPath, BOOL *verbose)
+/*
+ * dummy impl for ProjectSettings#initWithSerialization
+ */
+#import "CocosBuilderAppDelegate.h"
+#import "ResourceManagerUtil.h"
+#import "PlayerConnection.h"
+@implementation CocosBuilderAppDelegate {} @end
+@implementation ResourceManagerUtil {} @end
+@implementation PlayerConnection {} @end
+
+static void	parseArgs(NSArray *args, NSURL **projectPath, NSString **outPlugin, NSArray **publishPaths, NSURL **outputPath, BOOL *verbose)
 {
 	*outPlugin = @"ccbi";
 	
@@ -42,8 +53,8 @@ static void	parseArgs(NSArray *args, NSString **outPlugin, NSArray **publishPath
 		{
 			fprintf(stdout, "%s", [[NSString stringWithFormat:
 @"Usage:\n"
-@"%@ [-e <extension>|--extension=<extension>] [-o <outputfile>|--output=<outputfile>] [-v|--verbose] file\n"
-@"%@ [-e <extension>|--extension=<extension>] [-o <outputdir>|--output=<outputdir>] [-v|--verbose] file1 [file2 ...]\n"
+@"%@ [-p <projectfile>|--project=<projectfile>] [-e <extension>|--extension=<extension>] [-o <outputfile>|--output=<outputfile>] [-v|--verbose] file\n"
+@"%@ [-p <projectfile>|--project=<projectfile>] [-e <extension>|--extension=<extension>] [-o <outputdir>|--output=<outputdir>] [-v|--verbose] file1 [file2 ...]\n"
 @"%@ -l|--list-available-plugins\n"
 @"%@ -h|--help\n"
 @"%@ --version\n", prog, prog, prog, prog, prog] UTF8String]);
@@ -66,7 +77,14 @@ static void	parseArgs(NSArray *args, NSString **outPlugin, NSArray **publishPath
 		
 		else if (stillParsingArgs && ([arg isEqualToString:@"-v"] || [arg isEqualToString:@"--verbose"]))
 			*verbose = YES;
-
+		
+		else if (stillParsingArgs && [arg isEqualToString:@"-p"])
+			*projectPath = [[NSURL fileURLWithPath:[args objectAtIndex:++i]] absoluteURL];
+		else if (stillParsingArgs && [arg hasPrefix:@"-p"])
+			*projectPath = [[NSURL fileURLWithPath:[arg substringFromIndex:2]] absoluteURL];
+		else if (stillParsingArgs && [arg hasPrefix:@"--projectfile="])
+			*projectPath = [[NSURL fileURLWithPath:[arg substringFromIndex:14]] absoluteURL];
+	
 		else if (stillParsingArgs && [arg isEqualToString:@"-e"])
 			*outPlugin = [args objectAtIndex:++i];
 		else if (stillParsingArgs && [arg hasPrefix:@"-e"])
@@ -97,6 +115,26 @@ static void	parseArgs(NSArray *args, NSString **outPlugin, NSArray **publishPath
 	*publishPaths = paths;
 }
 
+static ProjectSettings* loadProjectSettings(NSURL* projectPath)
+{
+	NSMutableDictionary* projectDict = [NSMutableDictionary dictionaryWithContentsOfURL:projectPath];
+	if (! projectDict)
+	{
+		fprintf(stdout, "Error: could not load project file.\n");
+		exit(EXIT_FAILURE);
+	}
+	
+	ProjectSettings* project = [[[ProjectSettings alloc] initWithSerialization:projectDict] autorelease];
+	if (! project)
+	{
+		fprintf(stdout, "Error: invalid project file.\n");
+		exit(EXIT_FAILURE);
+	}
+	project.projectPath = [projectPath absoluteString];
+	
+	return project;
+}
+
 int		main(int argc, const char **argv)
 {
 #if __clang_major__ >= 3
@@ -113,14 +151,16 @@ int		main(int argc, const char **argv)
 		for (int i = 0; i < argc; ++i)
 			[args addObject:[NSString stringWithUTF8String:argv[i]]];
 		
+		NSURL					*projectPath = nil;
 		NSString				*pluginExt = nil;
 		NSArray					*operands = nil;
 		NSURL					*outputPath = nil;
 		PlugInExport			*plugin = nil;
+		ProjectSettings			*projectSettings = nil;
 		BOOL					verbose = NO;
 		
 		[[PlugInManager sharedManager] loadPlugIns];
-		parseArgs(args, &pluginExt, &operands, &outputPath, &verbose);
+		parseArgs(args, &projectPath, &pluginExt, &operands, &outputPath, &verbose);
 		
 		if (!(plugin = [[PlugInManager sharedManager] plugInExportForExtension:pluginExt]))
 		{
@@ -128,6 +168,14 @@ int		main(int argc, const char **argv)
 			exit(EXIT_FAILURE);
 		}
 		
+		if (projectPath) {
+			projectSettings = loadProjectSettings(projectPath);
+			if (verbose)
+				fprintf(stderr, "Notice: Successfully loaded %s.\n", [[projectPath absoluteString] UTF8String]);
+			plugin.projectSettings = projectSettings;
+			plugin.flattenPaths = projectSettings.flattenPaths;
+		}
+	
 		NSInteger				succeeds = 0, failures = 0;
 		
 		for (NSURL *file in operands)

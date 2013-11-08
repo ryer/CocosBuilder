@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		38D19F2C182C91F200909CF9 /* ProjectSettings.m in Sources */ = {isa = PBXBuildFile; fileRef = E3799EAC155979BF00196B4A /* ProjectSettings.m */; };
+		38D19F2F182C91FA00909CF9 /* HashValue.m in Sources */ = {isa = PBXBuildFile; fileRef = E32BBCB01561361200C58395 /* HashValue.m */; };
 		581130601639C52500A86D70 /* seq-startmarker.png in Resources */ = {isa = PBXBuildFile; fileRef = 5811305F1639C52000A86D70 /* seq-startmarker.png */; };
 		581BCFE8162DADE7007DE600 /* CCBSplitHorizontalView.m in Sources */ = {isa = PBXBuildFile; fileRef = 581BCFE7162DADE7007DE600 /* CCBSplitHorizontalView.m */; };
 		58FA2034162D73F3006B8856 /* TB_bottomPanel.png in Resources */ = {isa = PBXBuildFile; fileRef = 58FA2031162D73F3006B8856 /* TB_bottomPanel.png */; };
@@ -5366,6 +5368,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				38D19F2F182C91FA00909CF9 /* HashValue.m in Sources */,
+				38D19F2C182C91F200909CF9 /* ProjectSettings.m in Sources */,
 				FA98CFD7154E828E006E58C5 /* PlugInManager.m in Sources */,
 				FA98CFD9154E828E006E58C5 /* PlugInExport.m in Sources */,
 				FA98CFD1154E7F7D006E58C5 /* CCBX.m in Sources */,
